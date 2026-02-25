@@ -15,18 +15,19 @@ public class Main {
             File file = new File(path);
             boolean fileExists = file.exists();
             boolean isDirectory = file.isDirectory();
-            if (isDirectory == true && fileExists == true) {
+            if (isDirectory) {
                 System.out.println("Указана директория, а не файл. Попробуйте снова.");
-            } else if (fileExists == false && isDirectory == false) {
-                System.out.println("Файл не существует. Попробуйте снова.");
                 continue;
             }
-            if (fileExists == true && isDirectory == false) {
+            if (fileExists) {
                 countValidPatch++;
                 System.out.println("Путь указан верно, это файл " + countValidPatch);
-
+                continue;
             }
+            System.out.println("Файл не существует. Попробуйте снова.");
+
         }
     }
 }
+
 
