@@ -15,11 +15,17 @@ public class Statistics {
         this.uniquePath = new HashSet<>();
         this.occurrenceOS=new HashMap<>();
         this.osShare = new HashMap<>();
+        this.notFound= new HashSet<>();
+        this.occurrenceBrowser = new HashMap<String, Integer>();
+        this.browserShare = new HashMap<String, Double>();
     }
 
     private final HashSet<String> uniquePath;
     private final HashMap<String, Integer> occurrenceOS;
     private final HashMap<String, Double> osShare;
+    private final HashSet<String> notFound;
+    private final HashMap<String, Integer> occurrenceBrowser;
+    private final HashMap<String, Double> browserShare;
 
 
     public void addEntry(LogEntry logEntry) {
@@ -59,6 +65,12 @@ public class Statistics {
         }
     }
 
+    public void addNotFoundPath(LogEntry logEntry) {
+        if (logEntry.getStatus()==404){
+            notFound.add(logEntry.getPath());
+        }
+    }
+
     public void addOccurrenceOS(UserAgent user) {
         String os = user.getOs();
         if (os != null) {
@@ -89,6 +101,38 @@ public class Statistics {
 
     public HashMap<String, Double> getOSShare() {
         return osShare;
+    }
+
+    public void addOccurrenceBrowser(UserAgent user) {
+        String browser = user.getBrowser();
+        if (browser != null) {
+            if (!occurrenceBrowser.containsKey(browser)) {
+                occurrenceBrowser.put(browser, 1);
+            } else {
+                occurrenceBrowser.put(browser, occurrenceBrowser.get(browser) + 1);
+            }
+
+            recalculateBrowserShare();
+        }
+    }
+
+    private void recalculateBrowserShare() {
+        browserShare.clear();
+        int totalOccurrences = occurrenceBrowser.values().stream().mapToInt(Integer::intValue).sum();
+
+        if (totalOccurrences == 0) {
+            return;
+        }
+
+        for (String browser : occurrenceBrowser.keySet()) {
+            int count = occurrenceBrowser.get(browser);
+            double share = (double) count / totalOccurrences;
+            browserShare.put(browser, share);
+        }
+    }
+
+    public HashMap<String, Double> getBrowserShare() {
+        return browserShare;
     }
 
 
