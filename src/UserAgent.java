@@ -1,5 +1,3 @@
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class UserAgent {
     private final String os;
@@ -33,6 +31,14 @@ public class UserAgent {
             }
             return "Неизвестно";
         }
+    }
+
+    public static boolean isBot(String userAgent) {
+        if (userAgent == null) {
+            return false;
+        }
+        String botLower = userAgent.toLowerCase();
+        return botLower.contains("bot");
     }
 
     private static String extractBrowser(String userAgent) {

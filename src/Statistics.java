@@ -7,17 +7,23 @@ public class Statistics {
     private long totalTraffic;
     private LocalDateTime minTime;
     private LocalDateTime maxTime;
+    private long humanVisitCount;
+    private long errorRequestCount;
 
     public Statistics() {
         this.totalTraffic = 0;
         this.minTime = null;
         this.maxTime = null;
         this.uniquePath = new HashSet<>();
-        this.occurrenceOS=new HashMap<>();
+        this.occurrenceOS = new HashMap<>();
         this.osShare = new HashMap<>();
-        this.notFound= new HashSet<>();
+        this.notFound = new HashSet<>();
         this.occurrenceBrowser = new HashMap<String, Integer>();
         this.browserShare = new HashMap<String, Double>();
+        this.humanVisitCount = 0;
+        this.errorRequestCount = 0;
+        this.uniqueRealUserIPs=new HashSet<>();
+
     }
 
     private final HashSet<String> uniquePath;
@@ -26,13 +32,21 @@ public class Statistics {
     private final HashSet<String> notFound;
     private final HashMap<String, Integer> occurrenceBrowser;
     private final HashMap<String, Double> browserShare;
+    private final HashSet<String> uniqueRealUserIPs;
 
 
     public void addEntry(LogEntry logEntry) {
         this.totalTraffic += logEntry.getSize();
         updateTimeBounds(logEntry.getTime());
+        String userAgent = logEntry.getUserAgent().toString();
+        if (userAgent != null && !UserAgent.isBot(userAgent)) {
+            humanVisitCount++;
+            uniqueRealUserIPs.add(logEntry.getIpAddr());
+        }
+        if (logEntry.getStatus() >= 400 && logEntry.getStatus() < 600) {
+            errorRequestCount++;
+        }
     }
-
 
     private void updateTimeBounds(LocalDateTime time) {
         if (minTime == null || time.isBefore(minTime)) {
@@ -89,7 +103,7 @@ public class Statistics {
         int totalOccurrences = occurrenceOS.values().stream().mapToInt(Integer::intValue).sum();
 
         if (totalOccurrences == 0) {
-            return; // Если нет вхождений, ничего не делаем
+            return;
         }
 
         for (String os : occurrenceOS.keySet()) {
@@ -131,11 +145,47 @@ public class Statistics {
         }
     }
 
+    public double calculateAverageVisitsPerHour() {
+        if (minTime == null || maxTime == null) {
+            return 0;
+        }
+
+        Duration duration = Duration.between(minTime, maxTime);
+        double hours = duration.toMinutes() / 60.0;
+
+        if (hours <= 0) {
+            return 0;
+        }
+
+        return humanVisitCount / hours;
+    }
+
+    public double calculateAverageErrorRequestsPerHour() {
+        if (minTime == null || maxTime == null) {
+            return 0;
+        }
+
+        Duration duration = Duration.between(minTime, maxTime);
+        double hours = duration.toMinutes() / 60.0;
+
+        if (hours <= 0) {
+            return 0;
+        }
+
+        return errorRequestCount / hours;
+    }
+
+    public double calculateAverageVisitsPerUser() {
+        if (uniqueRealUserIPs.isEmpty()) {
+            return 0;
+        }
+
+        return (double) humanVisitCount / uniqueRealUserIPs.size();
+    }
+
     public HashMap<String, Double> getBrowserShare() {
         return browserShare;
     }
-
-
 
     public long getTotalTraffic() {
         return totalTraffic;
