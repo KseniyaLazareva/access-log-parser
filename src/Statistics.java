@@ -1,5 +1,6 @@
 import java.time.LocalDateTime;
 import java.time.Duration;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -22,8 +23,10 @@ public class Statistics {
         this.browserShare = new HashMap<String, Double>();
         this.humanVisitCount = 0;
         this.errorRequestCount = 0;
-        this.uniqueRealUserIPs=new HashSet<>();
-
+        this.uniqueRealUserIPs = new HashSet<>();
+        this.visitsPerSecond = new HashMap<>();
+        this.referers = new HashSet<>();
+        this.visitsPerUser = new HashMap<>();
     }
 
     private final HashSet<String> uniquePath;
@@ -33,7 +36,9 @@ public class Statistics {
     private final HashMap<String, Integer> occurrenceBrowser;
     private final HashMap<String, Double> browserShare;
     private final HashSet<String> uniqueRealUserIPs;
-
+    private final HashMap<Long, Integer> visitsPerSecond;
+    private final HashSet<String> referers;
+    private final HashMap<String, Integer> visitsPerUser;
 
     public void addEntry(LogEntry logEntry) {
         this.totalTraffic += logEntry.getSize();
@@ -42,6 +47,9 @@ public class Statistics {
         if (userAgent != null && !UserAgent.isBot(userAgent)) {
             humanVisitCount++;
             uniqueRealUserIPs.add(logEntry.getIpAddr());
+            updateVisitsPerSecond(logEntry.getTime());
+            addRefererDomain(logEntry.getReferrer());
+            updateVisitsPerUser(logEntry.getIpAddr());
         }
         if (logEntry.getStatus() >= 400 && logEntry.getStatus() < 600) {
             errorRequestCount++;
@@ -56,6 +64,28 @@ public class Statistics {
         if (maxTime == null || time.isAfter(maxTime)) {
             maxTime = time;
         }
+    }
+
+    private void updateVisitsPerSecond(LocalDateTime time) {
+        long second = time.toEpochSecond(ZoneId.systemDefault().getRules().getOffset(time));
+        visitsPerSecond.put(second, visitsPerSecond.getOrDefault(second, 0) + 1);
+    }
+
+    private void addRefererDomain(String referer) {
+        if (referer != null && !referer.isEmpty()) {
+            try {
+                java.net.URI uri = new java.net.URI(referer);
+                String domain = uri.getHost();
+                if (domain != null) {
+                    referers.add(domain);
+                }
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private void updateVisitsPerUser(String ip) {
+        visitsPerUser.put(ip, visitsPerUser.getOrDefault(ip, 0) + 1);
     }
 
     public double getTrafficRate() {
@@ -74,13 +104,13 @@ public class Statistics {
     }
 
     public void addUniquePath(LogEntry logEntry) {
-        if (logEntry.getStatus()==200){
+        if (logEntry.getStatus() == 200) {
             uniquePath.add(logEntry.getPath());
         }
     }
 
     public void addNotFoundPath(LogEntry logEntry) {
-        if (logEntry.getStatus()==404){
+        if (logEntry.getStatus() == 404) {
             notFound.add(logEntry.getPath());
         }
     }
@@ -183,8 +213,20 @@ public class Statistics {
         return (double) humanVisitCount / uniqueRealUserIPs.size();
     }
 
+    public int calculatePeakVisitsPerSecond() {
+        return visitsPerSecond.values().stream().max(Integer::compareTo).orElse(0);
+    }
+
+    public int calculateMaxVisitsPerUser() {
+        return visitsPerUser.values().stream().max(Integer::compareTo).orElse(0);
+    }
+
     public HashMap<String, Double> getBrowserShare() {
         return browserShare;
+    }
+
+    public HashSet<String> getRefererDomains() {
+        return referers;
     }
 
     public long getTotalTraffic() {
